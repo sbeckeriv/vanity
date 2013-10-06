@@ -1,5 +1,5 @@
 = Vanity
-{<img src="https://travis-ci.org/assaf/vanity.png?branch=feature/readme-update" alt="Build Status" />}[https://travis-ci.org/assaf/vanity]
+{<img src="https://travis-ci.org/assaf/vanity.png?branch=master" alt="Build Status" />}[https://travis-ci.org/assaf/vanity]
 
 Vanity is an Experiment Driven Development framework for Rails.
 
