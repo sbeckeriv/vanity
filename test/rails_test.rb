@@ -41,7 +41,7 @@ class UseVanityControllerTest < ActionController::TestCase
     experiment(:pie_or_cake).chooses(true)
     get :index
     assert_equal 'true', @response.body
- 
+
     experiment(:pie_or_cake).chooses(false)
     get :index
     assert_equal 'false', @response.body
@@ -98,17 +98,17 @@ class UseVanityControllerTest < ActionController::TestCase
     get :index
     assert_equal "576", @controller.send(:vanity_identity)
   end
-  
+
   def test_vanity_identity_set_with_indentity_paramater
     get :index, :_identity => "id_from_params"
     assert_equal "id_from_params", @controller.send(:vanity_identity)
-    
+
     @request.cookies['vanity_id'] = "old_id"
     get :index, :_identity => "id_from_params"
     assert_equal "id_from_params", @controller.send(:vanity_identity)
     assert cookies['vanity_id'], "id_from_params"
   end
-  
+
   # query parameter filter
 
   def test_redirects_and_loses_vanity_query_parameter
@@ -140,7 +140,7 @@ class UseVanityControllerTest < ActionController::TestCase
     get :index, :_identity => "123", :_track => "sugar_high"
     assert_equal experiment(:pie_or_cake).alternatives[0].converted, 1
   end
-  
+
   def test_cookie_domain_from_rails_configuration
     get :index
     assert_match /domain=.foo.bar/, @response["Set-Cookie"] if ::Rails.respond_to?(:application)
@@ -255,7 +255,7 @@ $stdout << Vanity.playground.connection
     ensure
       File.unlink yml.path
     end
-  
+
 
   end
 
@@ -382,29 +382,50 @@ $stdout << Vanity.playground.collecting?
   def load_rails(code, env = "production")
     tmp = Tempfile.open("test.rb")
     begin
-      tmp.write <<-RB
-  $:.delete_if { |path| path[/gems\\/vanity-\\d/] }
-  $:.unshift File.expand_path("../lib")
-  RAILS_ROOT = File.expand_path(".")
-  RAILS_ENV = ENV['RACK_ENV'] = "#{env}"
-  require "initializer"
-  require "active_support"
-  Rails.configuration = Rails::Configuration.new
-  initializer = Rails::Initializer.new(Rails.configuration)
-  initializer.check_gem_dependencies
-  require "vanity"
+      code_setup = <<-RB
+$:.delete_if { |path| path[/gems\\/vanity-\\d/] }
+$:.unshift File.expand_path("../lib")
+RAILS_ROOT = File.expand_path(".")
+RAILS_ENV = ENV['RACK_ENV'] = "#{env}"
       RB
+      code_setup += defined?(Rails::Railtie) ? load_rails_2 : load_rails_2
+      tmp.write code_setup
       tmp.write code
       tmp.flush
       Dir.chdir "tmp" do
-        open("|ruby #{tmp.path}").read
+        # BUNDLE_GEMFILE=#{ENV["BUNDLE_GEMFILE"]} bundle exec
+        open("| ruby #{tmp.path}").read
       end
+    rescue
+      "load error"
     ensure
       tmp.close!
     end
   end
 
+  def load_rails_2
+    <<-RB
+require "initializer"
+require "active_support"
+Rails.configuration = Rails::Configuration.new
+initializer = Rails::Initializer.new(Rails.configuration)
+initializer.check_gem_dependencies
+    RB
+  end
 
+  def load_rails_3
+    <<-RB
+require 'bundler/setup' if File.exists?(ENV['BUNDLE_GEMFILE'])
+
+require "active_model/railtie"
+require "active_record/railtie"
+require "action_controller/railtie"
+require "action_view/railtie"
+require "action_mailer/railtie"
+
+Bundler.require(:default)
+    RB
+  end
 
   def teardown
     super
