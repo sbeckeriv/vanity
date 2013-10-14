@@ -149,24 +149,19 @@ class UseVanityControllerTest < ActionController::TestCase
   # -- Load path --
 
   def test_load_path
-    assert_equal File.expand_path("tmp/experiments"), load_rails(<<-RB)
-initializer.after_initialize
+    assert_equal File.expand_path("tmp/experiments"), load_rails("", <<-RB)
 $stdout << Vanity.playground.load_path
     RB
   end
 
   def test_settable_load_path
-    assert_equal File.expand_path("tmp/predictions"), load_rails(<<-RB)
-Vanity.playground.load_path = "predictions"
-initializer.after_initialize
+    assert_equal File.expand_path("tmp/predictions"), load_rails(%Q{\nVanity.playground.load_path = "predictions"\n}, <<-RB)
 $stdout << Vanity.playground.load_path
     RB
   end
 
   def test_absolute_load_path
-    assert_equal File.expand_path("/tmp/var"), load_rails(<<-RB)
-Vanity.playground.load_path = "/tmp/var"
-initializer.after_initialize
+    assert_equal File.expand_path("/tmp/var"), load_rails(%Q{\nVanity.playground.load_path = "/tmp/var"\n}, <<-RB)
 $stdout << Vanity.playground.load_path
     RB
   end
@@ -176,16 +171,13 @@ $stdout << Vanity.playground.load_path
 
   if ENV['DB'] == 'redis'
     def test_default_connection
-      assert_equal "redis://127.0.0.1:6379/0", load_rails(<<-RB)
-initializer.after_initialize
+      assert_equal "redis://127.0.0.1:6379/0", load_rails("", <<-RB)
 $stdout << Vanity.playground.connection
       RB
     end
 
     def test_connection_from_string
-      assert_equal "redis://192.168.1.1:6379/5", load_rails(<<-RB)
-Vanity.playground.establish_connection "redis://192.168.1.1:6379/5"
-initializer.after_initialize
+      assert_equal "redis://192.168.1.1:6379/5", load_rails(%Q{\nVanity.playground.establish_connection "redis://192.168.1.1:6379/5"\n}, <<-RB)
 $stdout << Vanity.playground.connection
       RB
     end
@@ -201,8 +193,7 @@ production:
   database: 15
         YML
       end
-      assert_equal "redis://somehost:6379/15", load_rails(<<-RB)
-initializer.after_initialize
+      assert_equal "redis://somehost:6379/15", load_rails("", <<-RB)
 $stdout << Vanity.playground.connection
       RB
     ensure
@@ -217,8 +208,7 @@ $stdout << Vanity.playground.connection
 production: redis://somehost/15
         YML
       end
-      assert_equal "redis://somehost:6379/15", load_rails(<<-RB)
-initializer.after_initialize
+      assert_equal "redis://somehost:6379/15", load_rails("", <<-RB)
 $stdout << Vanity.playground.connection
       RB
     ensure
@@ -235,8 +225,7 @@ $stdout << Vanity.playground.connection
 production: <%= ENV['REDIS_URL'] %>
         YML
       end
-      assert_equal "redis://somehost:6379/15", load_rails(<<-RB)
-initializer.after_initialize
+      assert_equal "redis://somehost:6379/15", load_rails("", <<-RB)
 $stdout << Vanity.playground.connection
       RB
     ensure
@@ -248,8 +237,7 @@ $stdout << Vanity.playground.connection
       yml = File.open("tmp/config/redis.yml", "w")
       yml << "production: internal.local:6379\n"
       yml.flush
-      assert_equal "redis://internal.local:6379/0", load_rails(<<-RB)
-initializer.after_initialize
+      assert_equal "redis://internal.local:6379/0", load_rails("", <<-RB)
 $stdout << Vanity.playground.connection
       RB
     ensure
@@ -272,8 +260,7 @@ mongodb:
         YML
       end
 
-      assert_equal "mongodb://localhost:27017/vanity_test", load_rails(<<-RB, "mongodb")
-initializer.after_initialize
+      assert_equal "mongodb://localhost:27017/vanity_test", load_rails("", <<-RB, "mongodb")
 $stdout << Vanity.playground.connection
       RB
     ensure
@@ -294,13 +281,11 @@ mongodb:
           YML
         end
 
-        assert_equal "mongodb://localhost:27017/vanity_test", load_rails(<<-RB, "mongodb")
-initializer.after_initialize
+        assert_equal "mongodb://localhost:27017/vanity_test", load_rails("", <<-RB, "mongodb")
 $stdout << Vanity.playground.connection
         RB
 
-        assert_equal "Mongo::ReplSetConnection", load_rails(<<-RB, "mongodb")
-initializer.after_initialize
+        assert_equal "Mongo::ReplSetConnection", load_rails("", <<-RB, "mongodb")
 $stdout << Vanity.playground.connection.mongo.class
         RB
       ensure
@@ -317,8 +302,7 @@ production:
   adapter: redis
       YML
     end
-    assert_equal "No configuration for development", load_rails(<<-RB, "development")
-initializer.after_initialize
+    assert_equal "No configuration for development", load_rails("", <<-RB, "development")
 $stdout << (Vanity.playground.connection rescue $!.message)
     RB
   ensure
@@ -333,8 +317,7 @@ production:
   collecting: false
       YML
     end
-    assert_equal "false", load_rails(<<-RB)
-initializer.after_initialize
+    assert_equal "false", load_rails("", <<-RB)
 $stdout << Vanity.playground.collecting?
     RB
   ensure
@@ -342,44 +325,37 @@ $stdout << Vanity.playground.collecting?
   end
 
   def test_collection_true_in_production_by_default
-    assert_equal "true", load_rails(<<-RB, "production")
-initializer.after_initialize
+    assert_equal "true", load_rails("", <<-RB, "production")
 $stdout << Vanity.playground.collecting?
     RB
   end
 
   def test_collection_false_in_production_when_configured
-    assert_equal "false", load_rails(<<-RB, "production")
-Vanity.playground.collecting = false
-initializer.after_initialize
+    assert_equal "false", load_rails("\nVanity.playground.collecting = false\n", <<-RB, "production")
 $stdout << Vanity.playground.collecting?
     RB
   end
 
   def test_collection_false_in_development_by_default
-    assert_equal "false", load_rails(<<-RB, "development")
-initializer.after_initialize
+    assert_equal "false", load_rails("", <<-RB, "development")
 $stdout << Vanity.playground.collecting?
     RB
   end
 
   def test_collection_true_in_development_when_configured
-    assert_equal "true", load_rails(<<-RB, "development")
-Vanity.playground.collecting = true
-initializer.after_initialize
+    assert_equal "true", load_rails("\nVanity.playground.collecting = true\n", <<-RB, "development")
 $stdout << Vanity.playground.collecting?
     RB
   end
 
   def test_collection_false_after_test!
-    assert_equal "false", load_rails(<<-RB, "production")
-initializer.after_initialize
+    assert_equal "false", load_rails("", <<-RB, "production")
 Vanity.playground.test!
 $stdout << Vanity.playground.collecting?
     RB
   end
 
-  def load_rails(code, env = "production")
+  def load_rails(before_initialize, after_initialize, env="production")
     tmp = Tempfile.open("test.rb")
     begin
       code_setup = <<-RB
@@ -388,12 +364,15 @@ $:.unshift File.expand_path("../lib")
 RAILS_ROOT = File.expand_path(".")
 RAILS_ENV = ENV['RACK_ENV'] = "#{env}"
       RB
-      code_setup += defined?(Rails::Railtie) ? load_rails_2 : load_rails_2
-      tmp.write code_setup
+      code = code_setup
+      code += defined?(Rails::Railtie) ? load_rails_3 : load_rails_2
+      code += %Q{\nrequire "vanity"\n}
+      code += before_initialize
+      code += defined?(Rails::Railtie) ? initialize_rails_3 : initialize_rails_2
+      code += after_initialize
       tmp.write code
       tmp.flush
       Dir.chdir "tmp" do
-        # BUNDLE_GEMFILE=#{ENV["BUNDLE_GEMFILE"]} bundle exec
         open("| ruby #{tmp.path}").read
       end
     rescue
@@ -415,15 +394,19 @@ initializer.check_gem_dependencies
 
   def load_rails_3
     <<-RB
-require 'bundler/setup' if File.exists?(ENV['BUNDLE_GEMFILE'])
+require "#{File.expand_path('../dummy/config/application', __FILE__)}"
+    RB
+  end
 
-require "active_model/railtie"
-require "active_record/railtie"
-require "action_controller/railtie"
-require "action_view/railtie"
-require "action_mailer/railtie"
+  def initialize_rails_2
+    <<-RB
+initializer.after_initialize
+    RB
+  end
 
-Bundler.require(:default)
+  def initialize_rails_3
+    <<-RB
+Dummy::Application.initialize!
     RB
   end
 

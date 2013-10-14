@@ -2,20 +2,30 @@
 
 source "https://rubygems.org"
 
-gem "appraisal"
+gem "rack"
+gem "rails", "3.2.1"
+
 gem "garb"
-gem "mocha"
+
 gem "mongo"
 gem "bson_ext"
+
 gem "mysql"
+
 gem "pg"
-gem "rack"
-gem "shoulda"
-gem "timecop"
-gem "webmock"
+
 gem "SystemTimer", "1.2.3", :platforms=>:mri_18
-gem "rails", "3.2.1"
+
 gem "fastthread", :git=>"git://github.com/zoltankiss/fastthread.git"
 gem "passenger", "~>3.0"
+
+gem "appraisal"
+
+group :test do
+  gem "mocha"
+  gem "shoulda" # Requires test/unit
+  gem "timecop"
+  gem "webmock"
+end
 
 gemspec :path=>"../"
