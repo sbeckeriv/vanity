@@ -146,7 +146,16 @@ class UseVanityControllerTest < ActionController::TestCase
     assert_match /domain=.foo.bar/, @response["Set-Cookie"] if ::Rails.respond_to?(:application)
   end
 
-  # -- Load path --
+  def teardown
+    super
+    if !rails3?
+      UseVanityController.send(:filter_chain).clear
+    end
+  end
+
+end
+
+class LoadPathAndConnectionConfigurationTest < Test::Unit::TestCase
 
   def test_load_path
     assert_equal File.expand_path("tmp/experiments"), load_rails("", <<-RB)
@@ -165,9 +174,6 @@ $stdout << Vanity.playground.load_path
 $stdout << Vanity.playground.load_path
     RB
   end
-
-
-  # -- Connection configuration --
 
   if ENV['DB'] == 'redis'
     def test_default_connection
@@ -325,13 +331,13 @@ $stdout << Vanity.playground.collecting?
   end
 
   def test_collection_true_in_production_by_default
-    assert_equal "true", load_rails("", <<-RB, "production")
+    assert_equal "true", load_rails("", <<-RB)
 $stdout << Vanity.playground.collecting?
     RB
   end
 
   def test_collection_false_in_production_when_configured
-    assert_equal "false", load_rails("\nVanity.playground.collecting = false\n", <<-RB, "production")
+    assert_equal "false", load_rails("\nVanity.playground.collecting = false\n", <<-RB)
 $stdout << Vanity.playground.collecting?
     RB
   end
@@ -349,7 +355,7 @@ $stdout << Vanity.playground.collecting?
   end
 
   def test_collection_false_after_test!
-    assert_equal "false", load_rails("", <<-RB, "production")
+    assert_equal "false", load_rails("", <<-RB)
 Vanity.playground.test!
 $stdout << Vanity.playground.collecting?
     RB
@@ -362,10 +368,9 @@ $stdout << Vanity.playground.collecting?
 $:.delete_if { |path| path[/gems\\/vanity-\\d/] }
 $:.unshift File.expand_path("../lib")
 RAILS_ROOT = File.expand_path(".")
-RAILS_ENV = ENV['RACK_ENV'] = "#{env}"
       RB
       code = code_setup
-      code += defined?(Rails::Railtie) ? load_rails_3 : load_rails_2
+      code += defined?(Rails::Railtie) ? load_rails_3(env) : load_rails_2(env)
       code += %Q{\nrequire "vanity"\n}
       code += before_initialize
       code += defined?(Rails::Railtie) ? initialize_rails_3 : initialize_rails_2
@@ -382,8 +387,9 @@ RAILS_ENV = ENV['RACK_ENV'] = "#{env}"
     end
   end
 
-  def load_rails_2
+  def load_rails_2(env)
     <<-RB
+RAILS_ENV = ENV['RACK_ENV'] = "#{env}"
 require "initializer"
 require "active_support"
 Rails.configuration = Rails::Configuration.new
@@ -392,9 +398,19 @@ initializer.check_gem_dependencies
     RB
   end
 
-  def load_rails_3
+  def load_rails_3(env)
     <<-RB
-require "#{File.expand_path('../dummy/config/application', __FILE__)}"
+ENV['RAILS_ENV'] = ENV['RACK_ENV'] = "#{env}"
+require "active_model/railtie"
+require "action_controller/railtie"
+
+Bundler.require(:default)
+
+module Foo
+  class Application < Rails::Application
+    config.active_support.deprecation = :notify
+  end
+end
     RB
   end
 
@@ -406,14 +422,8 @@ initializer.after_initialize
 
   def initialize_rails_3
     <<-RB
-Dummy::Application.initialize!
+Foo::Application.initialize!
     RB
   end
 
-  def teardown
-    super
-    if !rails3?
-      UseVanityController.send(:filter_chain).clear
-    end
-  end
 end

@@ -14,8 +14,8 @@ env:
   #- DB=postgres
 gemfile:
   - Gemfile
-  - gemfiles/rails3.gemfile
-  - gemfiles/rails31.gemfile
+  # - gemfiles/rails3.gemfile
+  # - gemfiles/rails31.gemfile
   - gemfiles/rails32.gemfile
 before_script:
   - "mysql -e 'create database vanity_test;' >/dev/null"
